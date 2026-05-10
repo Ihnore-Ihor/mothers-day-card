@@ -1,256 +1,581 @@
-import { useEffect, useState } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  motion,
+  useAnimation,
+  useInView,
+  useMotionValue,
+  useTransform,
+  AnimatePresence,
+} from 'framer-motion';
 import motherImage from './assets/mother_with_bouquet.PNG';
 
-/* ─────────── Floating Watercolor Blobs ─────────── */
+/* ═══════════════════════════════════════════════
+   FALLING PETALS
+═══════════════════════════════════════════════ */
+const PETAL_EMOJIS = ['🌸', '🌺', '🌼', '🌷', '✿', '❀', '🍃', '🌿'];
+const PETAL_COUNT = 18;
+
+function generatePetal(id) {
+  return {
+    id,
+    emoji: PETAL_EMOJIS[Math.floor(Math.random() * PETAL_EMOJIS.length)],
+    left: `${Math.random() * 100}%`,
+    size: `${0.8 + Math.random() * 1.2}rem`,
+    duration: 8 + Math.random() * 12,
+    delay: Math.random() * 10,
+    drift: (Math.random() - 0.5) * 120,
+    rotate: Math.random() * 720 - 360,
+    opacity: 0.25 + Math.random() * 0.45,
+  };
+}
+
+const petals = Array.from({ length: PETAL_COUNT }, (_, i) => generatePetal(i));
+
+function FallingPetals() {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[1]" aria-hidden="true">
+      {petals.map((p) => (
+        <motion.span
+          key={p.id}
+          style={{ left: p.left, fontSize: p.size, opacity: p.opacity, top: '-5%' }}
+          className="absolute select-none"
+          animate={{
+            y: ['0vh', '110vh'],
+            x: [0, p.drift * 0.5, p.drift, p.drift * 0.7, 0],
+            rotate: [0, p.rotate],
+            opacity: [0, p.opacity, p.opacity, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        >
+          {p.emoji}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   SPARKLE PARTICLES
+═══════════════════════════════════════════════ */
+function Sparkle({ x, y, size, color, delay }) {
+  return (
+    <motion.div
+      className="absolute rounded-full pointer-events-none"
+      style={{ left: x, top: y, width: size, height: size, background: color }}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{
+        scale: [0, 1.5, 0],
+        opacity: [0, 1, 0],
+        y: [0, -24, -40],
+        x: [0, (Math.random() - 0.5) * 30],
+      }}
+      transition={{ duration: 1.8, delay, ease: 'easeOut', repeat: Infinity, repeatDelay: 3 + Math.random() * 4 }}
+    />
+  );
+}
+
+const sparkleData = Array.from({ length: 14 }, (_, i) => ({
+  id: i,
+  x: `${10 + Math.random() * 80}%`,
+  y: `${10 + Math.random() * 80}%`,
+  size: `${4 + Math.random() * 6}px`,
+  color: ['#F2C4A0', '#C8A8D8', '#8AAE78', '#D4A855', '#E8967C', '#DFC8EB'][Math.floor(Math.random() * 6)],
+  delay: Math.random() * 5,
+}));
+
+function SparkleField() {
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[2]" aria-hidden="true">
+      {sparkleData.map((s) => (
+        <Sparkle key={s.id} {...s} />
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   FLOATING WATERCOLOR BLOBS
+═══════════════════════════════════════════════ */
 const blobs = [
-  {
-    id: 1,
-    className: 'w-72 h-72 bg-lavender-light/40 top-[-5%] left-[-15%]',
-    animate: { x: [0, 30, -10, 0], y: [0, 20, -15, 0], scale: [1, 1.12, 0.95, 1] },
-    duration: 18,
-  },
-  {
-    id: 2,
-    className: 'w-80 h-80 bg-khaki-light/30 top-[15%] right-[-20%]',
-    animate: { x: [0, -25, 15, 0], y: [0, -20, 25, 0], scale: [1, 0.93, 1.08, 1] },
-    duration: 22,
-  },
-  {
-    id: 3,
-    className: 'w-64 h-64 bg-peach/25 top-[45%] left-[-10%]',
-    animate: { x: [0, 20, -20, 0], y: [0, -30, 10, 0], scale: [1, 1.1, 0.9, 1] },
-    duration: 20,
-  },
-  {
-    id: 4,
-    className: 'w-96 h-96 bg-lavender-pale/35 top-[65%] right-[-25%]',
-    animate: { x: [0, -15, 25, 0], y: [0, 15, -20, 0], scale: [1, 0.95, 1.05, 1] },
-    duration: 25,
-  },
-  {
-    id: 5,
-    className: 'w-56 h-56 bg-green-soft/20 top-[85%] left-[10%]',
-    animate: { x: [0, 15, -10, 0], y: [0, -10, 20, 0], scale: [1, 1.08, 0.96, 1] },
-    duration: 19,
-  },
-  {
-    id: 6,
-    className: 'w-48 h-48 bg-peach-dark/15 top-[30%] left-[60%]',
-    animate: { x: [0, -20, 10, 0], y: [0, 15, -25, 0], scale: [1, 1.15, 0.92, 1] },
-    duration: 23,
-  },
+  { id: 1, className: 'w-80 h-80 top-[-8%] left-[-18%]', color: 'rgba(200,168,216,0.35)', dur: 18 },
+  { id: 2, className: 'w-96 h-96 top-[12%] right-[-22%]',  color: 'rgba(212,200,164,0.28)', dur: 22 },
+  { id: 3, className: 'w-72 h-72 top-[42%] left-[-12%]',   color: 'rgba(242,196,160,0.25)', dur: 20 },
+  { id: 4, className: 'w-[26rem] h-[26rem] top-[60%] right-[-28%]', color: 'rgba(223,200,235,0.32)', dur: 25 },
+  { id: 5, className: 'w-64 h-64 top-[82%] left-[8%]',     color: 'rgba(138,174,120,0.2)',  dur: 19 },
+  { id: 6, className: 'w-56 h-56 top-[28%] left-[55%]',    color: 'rgba(212,168,85,0.18)',  dur: 23 },
 ];
 
 function FloatingBlobs() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-      {blobs.map((blob) => (
+      {blobs.map((b, i) => (
         <motion.div
-          key={blob.id}
-          className={`absolute rounded-full blur-3xl ${blob.className}`}
-          animate={blob.animate}
-          transition={{
-            duration: blob.duration,
-            repeat: Infinity,
-            repeatType: 'loop',
-            ease: 'easeInOut',
+          key={b.id}
+          className={`absolute rounded-full blur-3xl ${b.className}`}
+          style={{ background: b.color }}
+          animate={{
+            x: [0, 30 * (i % 2 === 0 ? 1 : -1), -15 * (i % 2 === 0 ? 1 : -1), 0],
+            y: [0, -25 * (i % 3 === 0 ? 1 : -1), 18 * (i % 3 === 0 ? 1 : -1), 0],
+            scale: [1, 1.12, 0.93, 1],
           }}
+          transition={{ duration: b.dur, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
     </div>
   );
 }
 
-/* ─────────── Decorative Divider ─────────── */
+/* ═══════════════════════════════════════════════
+   DECORATIVE DIVIDER
+═══════════════════════════════════════════════ */
 function FlowerDivider() {
   return (
-    <div className="flex items-center justify-center gap-3 py-4">
-      <div className="h-px w-12 bg-gradient-to-r from-transparent to-lavender" />
-      <span className="text-xl opacity-70 select-none">✿</span>
-      <div className="h-px w-12 bg-gradient-to-l from-transparent to-lavender" />
-    </div>
+    <motion.div
+      className="flex items-center justify-center gap-3 py-4 w-full"
+      initial={{ opacity: 0, scaleX: 0.4 }}
+      whileInView={{ opacity: 1, scaleX: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-transparent to-[#C8A8D8]" />
+      <motion.span
+        className="text-xl select-none"
+        animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        ✿
+      </motion.span>
+      <div className="h-px flex-1 max-w-[60px] bg-gradient-to-l from-transparent to-[#C8A8D8]" />
+    </motion.div>
   );
 }
 
-/* ─────────── Motion Variants ─────────── */
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.8, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
+/* ═══════════════════════════════════════════════
+   SHIMMER TEXT HEADING
+═══════════════════════════════════════════════ */
+function ShimmerHeading({ children, className }) {
+  return (
+    <motion.h1
+      className={`relative inline-block ${className}`}
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+    >
+      {children}
+      <motion.span
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+        style={{ mixBlendMode: 'overlay' }}
+        animate={{ x: ['-100%', '200%'] }}
+        transition={{ duration: 2.5, delay: 1.5, repeat: Infinity, repeatDelay: 4, ease: 'easeInOut' }}
+      />
+    </motion.h1>
+  );
+}
 
-const imageReveal = {
-  hidden: { opacity: 0, scale: 0.88, filter: 'blur(12px)' },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    filter: 'blur(0px)',
-    transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.3 },
-  },
+/* ═══════════════════════════════════════════════
+   ANIMATED MESSAGE — word-by-word reveal
+═══════════════════════════════════════════════ */
+function AnimatedParagraph({ text, className, delay = 0 }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const words = text.split(' ');
+
+  return (
+    <p ref={ref} className={className} aria-label={text}>
+      {words.map((word, i) => (
+        <motion.span
+          key={i}
+          className="inline-block mr-[0.25em]"
+          initial={{ opacity: 0, y: 16, filter: 'blur(4px)' }}
+          animate={inView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
+          transition={{ duration: 0.5, delay: delay + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {word}
+        </motion.span>
+      ))}
+    </p>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   CONFETTI BURST (on download click)
+═══════════════════════════════════════════════ */
+function ConfettiBurst({ active, onDone }) {
+  const particles = Array.from({ length: 20 }, (_, i) => ({
+    id: i,
+    angle: (i / 20) * 360,
+    color: ['#F2C4A0', '#C8A8D8', '#8AAE78', '#D4A855', '#E8967C', '#DFC8EB', '#fff'][i % 7],
+    distance: 60 + Math.random() * 80,
+  }));
+
+  return (
+    <AnimatePresence>
+      {active && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl z-20">
+          {particles.map((p) => {
+            const rad = (p.angle * Math.PI) / 180;
+            const tx = Math.cos(rad) * p.distance;
+            const ty = Math.sin(rad) * p.distance;
+            return (
+              <motion.div
+                key={p.id}
+                className="absolute w-2 h-2 rounded-full"
+                style={{ background: p.color }}
+                initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+                animate={{ x: tx, y: ty, scale: 0, opacity: 0 }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                onAnimationComplete={p.id === 0 ? onDone : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   PULSING HEART
+═══════════════════════════════════════════════ */
+function HeartBeat({ children }) {
+  return (
+    <motion.span
+      className="inline-block select-none"
+      animate={{ scale: [1, 1.35, 1, 1.15, 1] }}
+      transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 1.5, ease: 'easeInOut' }}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   GLOWING AURA (behind image)
+═══════════════════════════════════════════════ */
+function GlowAura() {
+  return (
+    <motion.div
+      className="absolute -inset-4 rounded-3xl -z-10"
+      style={{
+        background: 'conic-gradient(from 0deg, #F2C4A0, #C8A8D8, #8AAE78, #D4A855, #E8967C, #DFC8EB, #F2C4A0)',
+        filter: 'blur(24px)',
+        opacity: 0.45,
+      }}
+      animate={{ rotate: 360 }}
+      transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   MOTION VARIANTS
+═══════════════════════════════════════════════ */
+const fadeUp = {
+  hidden: { opacity: 0, y: 32 },
+  visible: (i = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.75, delay: i * 0.14, ease: [0.22, 1, 0.36, 1] },
+  }),
 };
 
 const staggerContainer = {
   hidden: {},
+  visible: { transition: { staggerChildren: 0.16, delayChildren: 0.5 } },
+};
+
+const imageReveal = {
+  hidden: { opacity: 0, scale: 0.85, filter: 'blur(16px)', y: 20 },
   visible: {
-    transition: { staggerChildren: 0.18, delayChildren: 0.6 },
+    opacity: 1, scale: 1, filter: 'blur(0px)', y: 0,
+    transition: { duration: 1.4, ease: [0.22, 1, 0.36, 1], delay: 0.3 },
   },
 };
 
-/* ─────────── Main App ─────────── */
+/* ═══════════════════════════════════════════════
+   MAIN APP
+═══════════════════════════════════════════════ */
 export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [confetti, setConfetti] = useState(false);
   const controls = useAnimation();
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const rotateX = useTransform(mouseY, [-150, 150], [6, -6]);
+  const rotateY = useTransform(mouseX, [-150, 150], [-6, 6]);
+  const imageRef = useRef(null);
 
   useEffect(() => {
-    // Preload the image
     const img = new Image();
     img.src = motherImage;
-    img.onload = () => {
-      setIsLoaded(true);
-      controls.start('visible');
-    };
-    // Fallback if already cached
-    if (img.complete) {
-      setIsLoaded(true);
-      controls.start('visible');
-    }
+    const start = () => { setIsLoaded(true); controls.start('visible'); };
+    img.onload = start;
+    if (img.complete) start();
   }, [controls]);
+
+  const handleMouseMove = useCallback((e) => {
+    const rect = imageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    mouseX.set(e.clientX - rect.left - rect.width / 2);
+    mouseY.set(e.clientY - rect.top - rect.height / 2);
+  }, [mouseX, mouseY]);
+
+  const handleMouseLeave = useCallback(() => {
+    mouseX.set(0);
+    mouseY.set(0);
+  }, [mouseX, mouseY]);
+
+  const handleDownloadClick = () => {
+    setConfetti(true);
+  };
 
   return (
     <div className="relative min-h-dvh bg-cream overflow-hidden">
-      {/* Animated watercolor blobs */}
+      {/* Layer 0: blobs */}
       <FloatingBlobs />
+      {/* Layer 1: falling petals */}
+      <FallingPetals />
+      {/* Layer 2: sparkles */}
+      <SparkleField />
 
-      {/* Main content card */}
+      {/* Main content */}
       <motion.main
         className="relative z-10 flex flex-col items-center px-5 py-10 max-w-md mx-auto min-h-dvh"
         initial="hidden"
         animate={controls}
         variants={staggerContainer}
       >
-        {/* ── Decorative top accent ── */}
-        <motion.div variants={fadeUp} custom={0} className="mb-2">
-          <span className="text-3xl select-none">💐</span>
+
+        {/* ── Animated bouquet icon ── */}
+        <motion.div
+          variants={fadeUp}
+          custom={0}
+          className="mb-3"
+        >
+          <motion.span
+            className="text-4xl select-none inline-block"
+            animate={{ y: [0, -8, 0], rotate: [-5, 5, -5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            💐
+          </motion.span>
         </motion.div>
 
         {/* ── Hero Heading ── */}
-        <motion.h1
-          variants={fadeUp}
-          custom={1}
-          className="font-heading text-3xl sm:text-4xl font-bold text-center leading-snug text-text-primary mb-1 tracking-tight"
-        >
+        <ShimmerHeading className="font-heading text-3xl sm:text-4xl font-bold text-center leading-snug text-text-primary mb-1 tracking-tight">
           Для найкращої мами
-        </motion.h1>
+        </ShimmerHeading>
+
         <motion.p
-          variants={fadeUp}
-          custom={2}
-          className="font-heading text-2xl sm:text-3xl font-semibold text-center text-coral mb-6 tracking-tight"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="font-heading text-2xl sm:text-3xl font-semibold text-center text-coral mb-8 tracking-tight"
         >
-          у світі!
+          у&nbsp;світі!
         </motion.p>
 
-        {/* ── Image Section ── */}
+        {/* ── Image with 3-D tilt + glow ── */}
         <motion.div
+          ref={imageRef}
           variants={imageReveal}
-          className="relative w-full mb-8"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          className="relative w-full mb-8 cursor-pointer"
+          style={{ perspective: 900, rotateX, rotateY }}
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 22 }}
         >
-          {/* Soft glow behind the image */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-lavender-light/40 via-peach/20 to-green-soft/20 blur-2xl scale-105 -z-10" />
+          {/* Rotating conic glow aura */}
+          <GlowAura />
 
-          <div className="relative rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(200,168,216,0.3),0_2px_12px_rgba(0,0,0,0.06)]">
-            {/* Shimmer placeholder */}
-            {!isLoaded && (
-              <div className="shimmer-bg w-full aspect-[3/4] rounded-2xl" />
-            )}
+          <div className="relative rounded-2xl overflow-hidden shadow-[0_12px_50px_rgba(200,168,216,0.35),0_4px_16px_rgba(0,0,0,0.08)]">
+            {!isLoaded && <div className="shimmer-bg w-full aspect-[3/4] rounded-2xl" />}
             <img
               src={motherImage}
               alt="Акварельна ілюстрація дівчинки з букетом квітів для мами"
-              className={`w-full h-auto rounded-2xl transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-auto rounded-2xl transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="eager"
+            />
+            {/* Rainbow shimmer overlay on hover */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl opacity-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, rgba(242,196,160,0.15) 0%, rgba(200,168,216,0.15) 50%, rgba(138,174,120,0.15) 100%)',
+              }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
             />
           </div>
 
-          {/* Decorative corner petals */}
-          <div className="absolute -top-2 -right-2 text-2xl opacity-50 rotate-12 select-none pointer-events-none">🌸</div>
-          <div className="absolute -bottom-2 -left-2 text-2xl opacity-50 -rotate-12 select-none pointer-events-none">🌿</div>
+          {/* Animated corner decorations */}
+          <motion.div
+            className="absolute -top-3 -right-3 text-2xl select-none pointer-events-none"
+            animate={{ rotate: [0, 20, -10, 0], scale: [1, 1.2, 0.9, 1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          >🌸</motion.div>
+          <motion.div
+            className="absolute -bottom-3 -left-3 text-2xl select-none pointer-events-none"
+            animate={{ rotate: [0, -15, 10, 0], scale: [1, 1.15, 0.95, 1] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+          >🌿</motion.div>
+          <motion.div
+            className="absolute -top-3 -left-3 text-xl select-none pointer-events-none opacity-70"
+            animate={{ rotate: [0, -20, 10, 0], scale: [1, 1.25, 0.9, 1] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.7 }}
+          >✨</motion.div>
+          <motion.div
+            className="absolute -bottom-3 -right-3 text-xl select-none pointer-events-none opacity-70"
+            animate={{ rotate: [0, 15, -10, 0], scale: [1, 1.2, 0.95, 1] }}
+            transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+          >🌺</motion.div>
         </motion.div>
 
         {/* ── Divider ── */}
-        <motion.div variants={fadeUp} custom={4}>
-          <FlowerDivider />
-        </motion.div>
+        <FlowerDivider />
 
-        {/* ── Message Section ── */}
+        {/* ── Message Card ── */}
         <motion.div
-          variants={fadeUp}
-          custom={5}
-          className="w-full bg-white/50 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-lavender-pale/60 shadow-sm"
+          initial={{ opacity: 0, y: 40, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-30px' }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full relative mb-8"
         >
-          <p className="font-accent text-lg sm:text-xl leading-relaxed text-text-secondary text-center">
-            Мамо, ти — як цей букет: така&nbsp;ж ніжна, яскрава і&nbsp;надихаюча.
-          </p>
-          <p className="font-accent text-lg sm:text-xl leading-relaxed text-text-secondary text-center mt-4">
-            Твоя любов дарує нам тепло, а&nbsp;твоя посмішка освітлює все навколо.
-          </p>
-          <p className="font-accent text-xl sm:text-2xl font-semibold text-center mt-5 text-peach-dark">
-            З Днем Матері, найдорожча!
-          </p>
-          <p className="font-accent text-lg text-center mt-2 text-text-muted">
-            Ми тебе дуже любимо. 💕
-          </p>
+          {/* Card glow */}
+          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-lavender-light/30 via-peach/20 to-green-soft/20 blur-lg -z-10" />
+
+          <div className="bg-white/60 backdrop-blur-md rounded-2xl p-6 border border-lavender-pale/50 shadow-sm">
+            <AnimatedParagraph
+              text="Мамо, ти — як цей букет: така ж ніжна, яскрава і надихаюча."
+              className="font-accent text-lg sm:text-xl leading-relaxed text-text-secondary text-center"
+              delay={0.1}
+            />
+            <AnimatedParagraph
+              text="Твоя любов дарує нам тепло, а твоя посмішка освітлює все навколо."
+              className="font-accent text-lg sm:text-xl leading-relaxed text-text-secondary text-center mt-4"
+              delay={0.5}
+            />
+
+            <motion.p
+              className="font-accent text-xl sm:text-2xl font-semibold text-center mt-6 text-peach-dark"
+              initial={{ opacity: 0, scale: 0.85 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              З Днем Матері, найдорожча!
+            </motion.p>
+
+            <motion.p
+              className="font-accent text-lg text-center mt-2 text-text-muted"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 1.5 }}
+            >
+              Ми тебе дуже любимо.&nbsp;<HeartBeat>💕</HeartBeat>
+            </motion.p>
+          </div>
         </motion.div>
 
         {/* ── Download Button ── */}
-        <motion.div variants={fadeUp} custom={6} className="w-full mb-10">
+        <motion.div
+          className="w-full mb-10 relative"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Pulsing ring */}
+          <motion.div
+            className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-peach-dark via-coral to-lavender opacity-40"
+            animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
           <motion.a
-            href="/image.png"
-            download="Mothers_Day_Gift.png"
+            href="/mother_with_bouquet.png"
+            download="mother_with_bouquet.png"
+            onClick={handleDownloadClick}
             className="group relative flex items-center justify-center gap-2.5 w-full py-4 px-6 rounded-2xl font-body font-semibold text-base text-white
                        bg-gradient-to-r from-peach-dark via-coral to-lavender
-                       shadow-[0_4px_20px_rgba(232,150,124,0.35)] hover:shadow-[0_6px_28px_rgba(232,150,124,0.5)]
-                       transition-shadow duration-300 no-underline select-none"
+                       shadow-[0_4px_24px_rgba(232,150,124,0.4)] hover:shadow-[0_8px_32px_rgba(232,150,124,0.6)]
+                       transition-shadow duration-300 no-underline select-none overflow-hidden"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
             id="download-button"
           >
-            {/* Shimmer overlay */}
-            <span className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-            </span>
+            {/* Horizontal shimmer sweep */}
+            <motion.span
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+              initial={{ x: '-100%' }}
+              whileHover={{ x: '200%' }}
+              transition={{ duration: 0.65, ease: 'easeInOut' }}
+            />
 
-            <svg className="w-5 h-5 shrink-0 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            {/* Confetti burst */}
+            <ConfettiBurst active={confetti} onDone={() => setConfetti(false)} />
+
+            <motion.svg
+              className="w-5 h-5 shrink-0 relative z-10"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+              animate={{ y: [0, 3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
-            </svg>
+            </motion.svg>
             <span className="relative z-10">Завантажити цей малюнок</span>
           </motion.a>
         </motion.div>
 
         {/* ── Divider ── */}
-        <motion.div variants={fadeUp} custom={7}>
-          <FlowerDivider />
-        </motion.div>
+        <FlowerDivider />
 
         {/* ── Footer ── */}
         <motion.footer
-          variants={fadeUp}
-          custom={8}
           className="text-center mt-4 mb-6"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="font-heading text-xl text-text-secondary italic">
+          <motion.p
+            className="font-heading text-xl text-text-secondary italic"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
             З любов'ю,
-          </p>
-          <p className="font-heading text-3xl font-bold text-text-primary mt-1 tracking-tight">
+          </motion.p>
+
+          <motion.p
+            className="font-heading text-4xl font-bold text-text-primary mt-1 tracking-tight"
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+          >
             Ігор
-          </p>
-          <span className="inline-block mt-3 text-2xl select-none">❤️</span>
+          </motion.p>
+
+          <div className="mt-3 flex justify-center gap-2">
+            <HeartBeat>❤️</HeartBeat>
+            <motion.span
+              className="inline-block text-2xl select-none"
+              animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.15, 1] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+            >🌸</motion.span>
+            <motion.span
+              className="inline-block text-2xl select-none"
+              animate={{ scale: [1, 1.2, 1], rotate: [0, -8, 8, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+            >💐</motion.span>
+          </div>
         </motion.footer>
 
-        {/* Bottom padding for safe area */}
         <div className="h-8" />
       </motion.main>
     </div>
