@@ -5,7 +5,6 @@ import {
   useInView,
   useMotionValue,
   useTransform,
-  AnimatePresence,
 } from 'framer-motion';
 import motherImage from './assets/mother_with_bouquet.PNG';
 
@@ -202,42 +201,6 @@ function AnimatedParagraph({ text, className, delay = 0 }) {
   );
 }
 
-/* ═══════════════════════════════════════════════
-   CONFETTI BURST (on download click)
-═══════════════════════════════════════════════ */
-function ConfettiBurst({ active, onDone }) {
-  const particles = Array.from({ length: 20 }, (_, i) => ({
-    id: i,
-    angle: (i / 20) * 360,
-    color: ['#F2C4A0', '#C8A8D8', '#8AAE78', '#D4A855', '#E8967C', '#DFC8EB', '#fff'][i % 7],
-    distance: 60 + Math.random() * 80,
-  }));
-
-  return (
-    <AnimatePresence>
-      {active && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl z-20">
-          {particles.map((p) => {
-            const rad = (p.angle * Math.PI) / 180;
-            const tx = Math.cos(rad) * p.distance;
-            const ty = Math.sin(rad) * p.distance;
-            return (
-              <motion.div
-                key={p.id}
-                className="absolute w-2 h-2 rounded-full"
-                style={{ background: p.color }}
-                initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-                animate={{ x: tx, y: ty, scale: 0, opacity: 0 }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                onAnimationComplete={p.id === 0 ? onDone : undefined}
-              />
-            );
-          })}
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
 
 /* ═══════════════════════════════════════════════
    PULSING HEART
@@ -301,7 +264,6 @@ const imageReveal = {
 ═══════════════════════════════════════════════ */
 export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [confetti, setConfetti] = useState(false);
   const controls = useAnimation();
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -328,10 +290,6 @@ export default function App() {
     mouseX.set(0);
     mouseY.set(0);
   }, [mouseX, mouseY]);
-
-  const handleDownloadClick = () => {
-    setConfetti(true);
-  };
 
   return (
     <div className="relative min-h-dvh bg-cream overflow-hidden">
@@ -483,56 +441,6 @@ export default function App() {
           </div>
         </motion.div>
 
-        {/* ── Download Button ── */}
-        <motion.div
-          className="w-full mb-10 relative"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {/* Pulsing ring */}
-          <motion.div
-            className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-peach-dark via-coral to-lavender opacity-40"
-            animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          />
-
-          <motion.a
-            href="/mother_with_bouquet.png"
-            download="mother_with_bouquet.png"
-            onClick={handleDownloadClick}
-            className="group relative flex items-center justify-center gap-2.5 w-full py-4 px-6 rounded-2xl font-body font-semibold text-base text-white
-                       bg-gradient-to-r from-peach-dark via-coral to-lavender
-                       shadow-[0_4px_24px_rgba(232,150,124,0.4)] hover:shadow-[0_8px_32px_rgba(232,150,124,0.6)]
-                       transition-shadow duration-300 no-underline select-none overflow-hidden"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
-            id="download-button"
-          >
-            {/* Horizontal shimmer sweep */}
-            <motion.span
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
-              initial={{ x: '-100%' }}
-              whileHover={{ x: '200%' }}
-              transition={{ duration: 0.65, ease: 'easeInOut' }}
-            />
-
-            {/* Confetti burst */}
-            <ConfettiBurst active={confetti} onDone={() => setConfetti(false)} />
-
-            <motion.svg
-              className="w-5 h-5 shrink-0 relative z-10"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-              animate={{ y: [0, 3, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
-            </motion.svg>
-            <span className="relative z-10">Завантажити цей малюнок</span>
-          </motion.a>
-        </motion.div>
 
         {/* ── Divider ── */}
         <FlowerDivider />
